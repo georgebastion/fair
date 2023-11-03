@@ -49263,15 +49263,14 @@ exports.constants = {
 
 },{"randombytes":"node_modules/randombytes/browser.js","create-hash":"node_modules/create-hash/browser.js","create-hmac":"node_modules/create-hmac/browser.js","browserify-sign/algos":"node_modules/browserify-sign/algos.js","pbkdf2":"node_modules/pbkdf2/browser.js","browserify-cipher":"node_modules/browserify-cipher/browser.js","diffie-hellman":"node_modules/diffie-hellman/browser.js","browserify-sign":"node_modules/browserify-sign/browser/index.js","create-ecdh":"node_modules/create-ecdh/browser.js","public-encrypt":"node_modules/public-encrypt/browser.js","randomfill":"node_modules/randomfill/browser.js"}],"index.js":[function(require,module,exports) {
 var crypto = require("crypto");
-function hashFromMultiplier(multiplier, salt) {
-  var seed = multiplier.toString();
-  var hash = crypto.createHmac("sha256", seed).update(salt).digest("hex");
-  return hash;
-}
+var crashHash = "";
+var salt = "d151b7b4a05e7689423d0aa44d47f931767f0b1e6e7952f4bf742386d3a1e800";
 function generateHash(seed) {
   return crypto.createHash("sha256").update(seed).digest("hex");
 }
 function divisible(hash, mod) {
+  // We will read in 4 hex at a time, but the first chunk might be a bit smaller
+  // So ABCDEFGHIJ should be chunked like  AB CDEF GHIJ
   var val = 0;
   var o = hash.length % 4;
   for (var i = o > 0 ? o - 4 : 0; i < hash.length; i += 4) {
@@ -49279,7 +49278,7 @@ function divisible(hash, mod) {
   }
   return val === 0;
 }
-function crashPointFromHash(serverSeed, salt) {
+function crashPointFromHash(serverSeed) {
   var hash = crypto.createHmac("sha256", serverSeed).update(salt).digest("hex");
   var hs = parseInt(100 / 4);
   if (divisible(hash, hs)) {
@@ -49289,37 +49288,27 @@ function crashPointFromHash(serverSeed, salt) {
   var e = Math.pow(2, 52);
   return Math.floor((100 * e - h) / (e - h)) / 100.0;
 }
-var salt = crypto.randomBytes(32).toString('hex');
-console.log("Unique salt:", salt);
-// Usage example:
-//const salt ="0xd2867566759e9158bda9bf93b343bbd9aa02ce1e0c5bc2b37a2d70d391b04f14";
-var multiplier = 92; // Replace with your desired multiplier
-var hash = hashFromMultiplier(multiplier, salt);
-console.log("Generated hash:", hash);
-
-// Testing if parsing the generated hash yields the multiplier
-var result = crashPointFromHash(hash, salt);
-console.log("Parsed multiplier:", result);
-console.log(generateHash('aaea6707bdb0dd0e0b776e642ab3d82d7e52a2dd18607be36f82cd16c3b8ed96'));
-console.log(crashPointFromHash('05627a12cce53b9b1a9118b2dd9a09beb68b6d7a811021cf6662f8fb7ba5790c', salt));
-function getAllValues() {
-  var allValues = [];
-  var hash = hashFromMultiplier(1, salt);
-  for (var index = 0; index < 10000; index++) {
-    var _multiplier = 92; // Replace with your desired multiplier
-
-    var _result = crashPointFromHash(hash, salt);
-    allValues.push({
-      m: _result,
-      hash: hash
+function getPreviousGames() {
+  var previousGames = [];
+  var gameHash = generateHash(crashHash);
+  for (var i = 0; i < 100; i++) {
+    var gameResult = crashPointFromHash(gameHash);
+    previousGames.push({
+      gameHash: gameHash,
+      gameResult: gameResult
     });
-    console.log('old: ', hash);
-    hash = generateHash(hash);
-    console.log('new: ', hash);
+    gameHash = generateHash(gameHash);
   }
-  console.log(allValues);
+  return previousGames;
 }
-getAllValues();
+function verifyCrash() {
+  var gameResult = crashPointFromHash(crashHash);
+  var previousHundredGames = getPreviousGames();
+  return {
+    gameResult: gameResult,
+    previousHundredGames: previousHundredGames
+  };
+}
 },{"crypto":"node_modules/crypto-browserify/index.js"}],"node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
@@ -49345,7 +49334,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "52542" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "37027" + '/');
   ws.onmessage = function (event) {
     checkedAssets = {};
     assetsToAccept = [];
